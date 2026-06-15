@@ -8,7 +8,7 @@ DATASET_FILE  = "fra.txt"
 DATASET_URL   = "http://storage.googleapis.com/download.tensorflow.org/data/fra-eng.zip"
 EN_TOKENIZER  = "en_tokenizer.json"
 FR_TOKENIZER  = "fr_tokenizer.json"
-CHECKPOINT    = "checkpoint.pt"
+CHECKPOINT    = "transformer_model.pth"
 
 # ── Tokenizer ─────────────────────────────────────────────────
 VOCAB_SIZE     = 8_000

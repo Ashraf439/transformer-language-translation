@@ -64,3 +64,47 @@ def run_inference(model, text_pairs, en_tokenizer, fr_tokenizer, device):
         print(f"  FR : {true_fr}")
         print(f"  PRD: {pred_fr}")
         print()
+
+if __name__ == "__main__":
+    import tokenizers
+    from model import Transformer
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"[LOAD] Device: {device}")
+
+    print("[LOAD] Loading tokenizers...")
+    en_tokenizer = tokenizers.Tokenizer.from_file(config.EN_TOKENIZER)
+    fr_tokenizer = tokenizers.Tokenizer.from_file(config.FR_TOKENIZER)
+
+    print("[LOAD] Building model and loading weights...")
+    model = Transformer(
+        num_layers     = config.NUM_LAYERS,
+        num_heads      = config.NUM_HEADS,
+        num_kv_heads   = config.NUM_KV_HEADS,
+        hidden_dim     = config.HIDDEN_DIM,
+        max_seq_len    = config.MAX_SEQ_LEN,
+        vocab_size_src = len(en_tokenizer.get_vocab()),
+        vocab_size_tgt = len(fr_tokenizer.get_vocab()),
+        dropout        = config.DROPOUT,
+    ).to(device)
+
+    model.load_state_dict(torch.load(config.CHECKPOINT, map_location=device))
+    model.eval()
+    print("[LOAD] Model ready.\n")
+
+    print("=" * 50)
+    print("  EN → FR Translator  (type 'quit' to exit)")
+    print("=" * 50)
+
+    while True:
+        sentence = input("\nEnglish: ").strip()
+        if sentence.lower() in ("quit", "exit", "q"):
+            print("Bye!")
+            break
+        if not sentence:
+            continue
+        en_ids = torch.tensor(
+            en_tokenizer.encode(sentence.lower().strip()).ids
+        ).unsqueeze(0).to(device)
+        pred_ids = greedy_decode(model, en_ids, en_tokenizer, fr_tokenizer, device)
+        print(f"French : {fr_tokenizer.decode(pred_ids)}")
