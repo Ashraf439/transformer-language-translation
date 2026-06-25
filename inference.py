@@ -9,7 +9,7 @@ import config
 from utils import create_causal_mask, create_padding_mask
 
 
-@torch.no_grad()
+# @torch.no_grad()
 def greedy_decode(
     model,
     en_ids: torch.Tensor,
@@ -64,6 +64,109 @@ def run_inference(model, text_pairs, en_tokenizer, fr_tokenizer, device):
         print(f"  FR : {true_fr}")
         print(f"  PRD: {pred_fr}")
         print()
+@torch.no_grad()
+def beam_search_decode(
+    model, 
+    en_ids,
+    en_tokenizer, 
+    fr_tokenizer, 
+    device, 
+    beam_width=3, 
+    max_len=config.MAX_GEN_LEN
+):
+    start_id  = fr_tokenizer.token_to_id(config.START_TOKEN)
+    end_id    = fr_tokenizer.token_to_id(config.END_TOKEN)
+    pad_id_en = en_tokenizer.token_to_id(config.PAD_TOKEN)
+    pad_id_fr = fr_tokenizer.token_to_id(config.PAD_TOKEN)
+
+    src_mask = create_padding_mask(en_ids, pad_id_en)
+    enc_out  = model.encode(en_ids, src_mask)
+    
+    #Initialize beams
+    fr_ids = torch.tensor([[start_id]], device=device)
+    beams = [(fr_ids[0], 0.0)]
+
+    completed = []
+    for _ in range(max_len):
+        candidates = []
+        for token_ids, score in beams:
+            if token_ids[-1].item() == end_id:
+                completed.append((token_ids, score))
+                continue
+            fr_ids = token_ids.unsqueeze(0)          # (1, seq_len)
+            tgt_mask = (
+                create_causal_mask(fr_ids.shape[1], device).unsqueeze(0)
+                + create_padding_mask(fr_ids, pad_id_fr)
+            )
+            logits = model.decode(fr_ids, enc_out, tgt_mask)
+            log_probs = torch.log_softmax(logits[0, -1, :], dim=-1)
+            top_scores, top_tokens = torch.topk(log_probs, beam_width)
+            
+            for i in range(beam_width):
+                new_ids = torch.cat([token_ids, top_tokens[i].unsqueeze(0)])
+                new_score = score + top_scores[i].item()
+                candidates.append((new_ids, new_score))
+
+        beams = sorted(candidates, key=lambda x: x[1], reverse=True)[:beam_width]
+
+        if len(completed) >= beam_width:
+            break
+    
+    all_beams = completed if completed else beams
+    best = max(all_beams, key=lambda x: x[1] / len(x[0]))
+    return best[0].tolist(), best[1] / len(best[0])
+
+# @torch.no_grad()
+def beam_search_candidates(
+    model, 
+    en_ids,
+    en_tokenizer, 
+    fr_tokenizer, 
+    device, 
+    beam_width=3, 
+    max_len=config.MAX_GEN_LEN
+):
+    start_id  = fr_tokenizer.token_to_id(config.START_TOKEN)
+    end_id    = fr_tokenizer.token_to_id(config.END_TOKEN)
+    pad_id_en = en_tokenizer.token_to_id(config.PAD_TOKEN)
+    pad_id_fr = fr_tokenizer.token_to_id(config.PAD_TOKEN)
+
+    src_mask = create_padding_mask(en_ids, pad_id_en)
+    enc_out  = model.encode(en_ids, src_mask)
+    
+    #Initialize beams
+    fr_ids = torch.tensor([[start_id]], device=device)
+    beams = [(fr_ids[0], 0.0)]
+
+    completed = []
+    for _ in range(max_len):
+        candidates = []
+        for token_ids, score in beams:
+            if token_ids[-1].item() == end_id:
+                completed.append((token_ids, score))
+                continue
+            fr_ids = token_ids.unsqueeze(0)          # (1, seq_len)
+            tgt_mask = (
+                create_causal_mask(fr_ids.shape[1], device).unsqueeze(0)
+                + create_padding_mask(fr_ids, pad_id_fr)
+            )
+            logits = model.decode(fr_ids, enc_out, tgt_mask)
+            log_probs = torch.log_softmax(logits[0, -1, :], dim=-1)
+            top_scores, top_tokens = torch.topk(log_probs, beam_width)
+            
+            for i in range(beam_width):
+                new_ids = torch.cat([token_ids, top_tokens[i].unsqueeze(0)])
+                new_score = score + top_scores[i].item()
+                candidates.append((new_ids, new_score))
+
+        beams = sorted(candidates, key=lambda x: x[1], reverse=True)[:beam_width]
+
+        if len(completed) >= beam_width:
+            break
+    
+    all_beams = completed if completed else beams
+    all_beams = sorted(all_beams, key=lambda x: x[1] / len(x[0]), reverse=True)
+    return [beam[0].tolist() for beam in all_beams]
 
 if __name__ == "__main__":
     import tokenizers
@@ -88,7 +191,7 @@ if __name__ == "__main__":
         dropout        = config.DROPOUT,
     ).to(device)
 
-    model.load_state_dict(torch.load(config.CHECKPOINT, map_location=device))
+    model.load_state_dict(torch.load(config.CHECKPOINT, map_location=device, weights_only=True))
     model.eval()
     print("[LOAD] Model ready.\n")
 

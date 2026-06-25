@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TransFormer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-w: 220px;
+      --accent: #16a34a;
+      --accent-hover: #15803d;
+      --sidebar-bg: #0f1117;
+      --sidebar-text: #9ca3af;
+      --sidebar-active: #ffffff;
+      --sidebar-active-bg: #1c1f27;
+      --main-bg: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --input-bg: #fafafa;
+      --danger: #ef4444;
+      --warning: #f97316;
+      --conf-high: #16a34a;
+      --conf-mid: #d97706;
+      --conf-low: #ef4444;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--main-bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      height: 100vh;
+      padding: 0;
+    }
+
+    .sidebar-brand {
+      padding: 1.25rem 1.25rem 1rem;
+      border-bottom: 1px solid #1c1f27;
+    }
+
+    .brand-name {
+      font-size: 17px;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-name span {
+      color: var(--accent);
+    }
+
+    .brand-sub {
+      font-size: 11px;
+      color: var(--sidebar-text);
+      margin-top: 2px;
+      font-family: monospace;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 0.75rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      color: var(--sidebar-text);
+      font-size: 14px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item:hover { background: #1c1f27; color: #d1d5db; }
+    .nav-item.active { background: var(--sidebar-active-bg); color: var(--sidebar-active); }
+    .nav-item.active i { color: var(--accent); }
+    .nav-item i { font-size: 18px; }
+
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 8px 12px 4px;
+      margin-top: 8px;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid #1c1f27;
+    }
+
+    .kbd-hint {
+      font-size: 11px;
+      color: #4b5563;
+      line-height: 1.8;
+    }
+
+    kbd {
+      background: #1c1f27;
+      border: 1px solid #374151;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 10px;
+      color: #9ca3af;
+      font-family: monospace;
+    }
+
+    /* ── Main area ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Views ── */
+    .view { display: none; flex-direction: column; height: 100%; }
+    .view.active { display: flex; }
+
+    /* ── Translator view ── */
+    .lang-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .lang-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 500;
+      background: #f9fafb;
+    }
+
+    .lang-arrow {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .conf-badge {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+      display: none;
+    }
+
+    .conf-badge.high { background: #dcfce7; color: #15803d; }
+    .conf-badge.mid  { background: #fef3c7; color: #92400e; }
+    .conf-badge.low  { background: #fee2e2; color: #b91c1c; }
+
+    /* ── Translator panels ── */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-left { border-right: 1px solid var(--border); }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .panel-lang {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .panel-actions { display: flex; align-items: center; gap: 6px; }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+      border-radius: 5px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      transition: color 0.15s, background 0.15s;
+    }
+
+    .icon-btn:hover { color: var(--text); background: #f3f4f6; }
+
+    .char-count {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .char-count.over { color: var(--danger); }
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      border: none;
+      outline: none;
+      resize: none;
+      font-size: 16px;
+      line-height: 1.7;
+      color: var(--text);
+      background: transparent;
+      font-family: inherit;
+      padding: 20px;
+    }
+
+    textarea::placeholder { color: #d1d5db; }
+
+    .output-area {
+      flex: 1;
+      padding: 20px;
+      font-size: 16px;
+      line-height: 1.7;
+      overflow-y: auto;
+    }
+
+    .output-placeholder { color: #d1d5db; }
+
+    /* divider pulse dot */
+    .divider-dot {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+      transition: background 0.3s;
+      z-index: 2;
+    }
+
+    .divider-dot.translating {
+      background: var(--accent);
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(22,163,74,0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(22,163,74,0); }
+    }
+
+    /* loading dots */
+    .loading {
+      display: none;
+      align-items: center;
+      gap: 5px;
+      padding: 20px;
+    }
+
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: bounce 1.2s infinite;
+    }
+
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1); }
+    }
+
+    /* candidates */
+    .candidates-bar {
+      border-top: 1px solid var(--border);
+      padding: 10px 20px;
+      flex-shrink: 0;
+      display: none;
+    }
+
+    .candidates-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .candidate-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .candidate-item {
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.1s;
+    }
+
+    .candidate-item:hover { background: #f9fafb; }
+    .candidate-item:first-child { font-weight: 500; border-color: var(--accent); color: var(--accent); }
+
+    .candidate-rank {
+      font-size: 10px;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    /* bottom bar */
+    .bottom-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      background: #fafafa;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .bottom-actions { display: flex; gap: 8px; align-items: center; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn:hover { background: #f3f4f6; }
+    .btn:active { transform: scale(0.98); }
+
+    .btn-accent {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .btn-accent:hover { background: var(--accent-hover); }
+
+    /* ── History view ── */
+    .view-header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .view-title {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .view-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .view-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 28px;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .history-table th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .history-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: top;
+    }
+
+    .history-table tr:hover td { background: #fafafa; }
+
+    .history-table tr td:last-child {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: monospace;
+      white-space: nowrap;
+    }
+
+    .conf-pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .conf-pill.high { background: #dcfce7; color: #15803d; }
+    .conf-pill.mid  { background: #fef3c7; color: #92400e; }
+    .conf-pill.low  { background: #fee2e2; color: #b91c1c; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-state i { font-size: 40px; opacity: 0.3; display: block; margin-bottom: 12px; }
+
+    /* ── API Docs view ── */
+    .api-section {
+      margin-bottom: 28px;
+    }
+
+    .api-method {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin-right: 8px;
+    }
+
+    .method-post { background: #dbeafe; color: #1d4ed8; }
+    .method-get  { background: #dcfce7; color: #15803d; }
+
+    .api-path {
+      font-family: monospace;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .api-desc {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 6px 0 10px;
+    }
+
+    .api-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    pre {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      font-family: monospace;
+      overflow-x: auto;
+      margin-bottom: 12px;
+      line-height: 1.6;
+    }
+
+    .api-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+
+    /* warning */
+    .inline-warning {
+      font-size: 13px;
+      color: var(--warning);
+      padding: 8px 0 0;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-name">Trans<span>Former</span></div>
+    <div class="brand-sub">EN → FR · Transformer model</div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Tools</div>
+    <button class="nav-item active" onclick="showView('translate', this)">
+      <i class="ti ti-language"></i> Translate
+    </button>
+    <button class="nav-item" onclick="showView('history', this)">
+      <i class="ti ti-history"></i> History
+    </button>
+
+    <div class="nav-section-label">Developers</div>
+    <button class="nav-item" onclick="showView('api', this)">
+      <i class="ti ti-code"></i> API Docs
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="kbd-hint">
+      <kbd>Enter</kbd> translate<br>
+      <kbd>Ctrl+Enter</kbd> translate<br>
+      <kbd>Esc</kbd> clear<br>
+      <kbd>Ctrl+C</kbd> copy result
+    </div>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<main class="main">
+
+  <!-- ── Translate view ── -->
+  <div class="view active" id="view-translate">
+
+    <div class="lang-bar">
+      <div class="lang-pill">
+        <i class="ti ti-flag" style="font-size:14px;color:var(--muted)"></i> English
+      </div>
+      <i class="ti ti-arrow-right lang-arrow"></i>
+      <div class="lang-pill">
+        <i class="ti ti-flag" style="font-size:14px;color:var(--accent)"></i> French
+      </div>
+      <div class="conf-badge" id="conf-badge"></div>
+    </div>
+
+    <div class="panels">
+      <div class="panel panel-left">
+        <div class="panel-header">
+          <div class="panel-lang">
+            <i class="ti ti-pencil" style="font-size:14px"></i> Source
+          </div>
+          <div class="panel-actions">
+            <span class="char-count" id="char-count">0 / 200</span>
+            <button class="icon-btn" title="Paste" onclick="pasteText()">
+              <i class="ti ti-clipboard"></i>
+            </button>
+            <button class="icon-btn" title="Clear (Esc)" onclick="clearAll()">
+              <i class="ti ti-x"></i>
+            </button>
+          </div>
+        </div>
+        <textarea
+          id="input-text"
+          placeholder="Enter English text to translate…"
+          spellcheck="false"
+          autofocus
+        ></textarea>
+        <div class="inline-warning" id="lang-warning">
+          <i class="ti ti-alert-triangle" style="font-size:13px"></i>
+          Input looks like French. Please enter English text.
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-lang">
+            <i class="ti ti-language" style="font-size:14px"></i> Translation
+          </div>
+          <div class="panel-actions">
+            <button class="icon-btn" id="copy-btn" title="Copy (Ctrl+C)" onclick="copyResult()" style="display:none">
+              <i class="ti ti-copy"></i>
+            </button>
+          </div>
+        </div>
+        <div class="loading" id="loading">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="output-area" id="output">
+          <span class="output-placeholder">Translation appears here</span>
+        </div>
+        <div class="candidates-bar" id="candidates-bar">
+          <div class="candidates-label">Alternative translations</div>
+          <div class="candidate-list" id="candidate-list"></div>
+        </div>
+      </div>
+
+      <div class="divider-dot" id="divider-dot"></div>
+    </div>
+
+    <div class="bottom-bar">
+      <span class="hint" id="hint">Tip: punctuate your input — <em>hello , how are you ?</em></span>
+      <div class="bottom-actions">
+        <button class="btn" onclick="clearAll()">
+          <i class="ti ti-trash"></i> Clear
+        </button>
+        <button class="btn btn-accent" onclick="runTranslate()">
+          <i class="ti ti-arrow-right"></i> Translate
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── History view ── -->
+  <div class="view" id="view-history">
+    <div class="view-header">
+      <div class="view-title">Translation History</div>
+      <div class="view-sub">Last 20 translations saved from this session</div>
+    </div>
+    <div class="view-body">
+      <div id="history-content">
+        <div class="empty-state">
+          <i class="ti ti-history"></i>
+          No translations yet. Start translating to see your history here.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── API Docs view ── -->
+  <div class="view" id="view-api">
+    <div class="view-header">
+      <div class="view-title">API Reference</div>
+      <div class="view-sub">All endpoints are served from the same host as this app</div>
+    </div>
+    <div class="view-body">
+
+      <div class="api-section">
+        <div>
+          <span class="api-method method-post">POST</span>
+          <span class="api-path">/translate</span>
+        </div>
+        <div class="api-desc">Returns the best translation using beam search, along with a confidence score (0–100).</div>
+        <div class="api-label">Request body</div>
+        <pre>{"text": "hello , how are you ?"}</pre>
+        <div class="api-label">Response</div>
+        <pre>{"translation": "bonjour , comment allez-vous ?", "confidence": 93.5}</pre>
+      </div>
+
+      <hr class="api-divider">
+
+      <div class="api-section">
+        <div>
+          <span class="api-method method-post">POST</span>
+          <span class="api-path">/translate/candidates</span>
+        </div>
+        <div class="api-desc">Returns the top 3 beam search candidates ranked by score. Useful when you want to offer alternatives.</div>
+        <div class="api-label">Request body</div>
+        <pre>{"text": "hello , how are you ?"}</pre>
+        <div class="api-label">Response</div>
+        <pre>{"candidates": [
+  "bonjour , comment allez-vous ?",
+  "bonjour , comment vas-tu ?",
+  "salut , comment allez-vous ?"
+]}</pre>
+      </div>
+
+      <hr class="api-divider">
+
+      <div class="api-section">
+        <div>
+          <span class="api-method method-get">GET</span>
+          <span class="api-path">/history</span>
+        </div>
+        <div class="api-desc">Returns the last 20 saved translations ordered by most recent first.</div>
+        <div class="api-label">Response</div>
+        <pre>{"history": [
+  {
+    "english": "hello , how are you ?",
+    "french": "bonjour , comment allez-vous ?",
+    "confidence": 93.5,
+    "timestamp": "2026-06-24 13:12:54"
+  }
+]}</pre>
+      </div>
+
+      <hr class="api-divider">
+
+      <div class="api-section">
+        <div>
+          <span class="api-method method-get">GET</span>
+          <span class="api-path">/</span>
+        </div>
+        <div class="api-desc">Serves the main TransFormer web interface.</div>
+      </div>
+
+      <div class="api-section">
+        <div>
+          <span class="api-method method-get">GET</span>
+          <span class="api-path">/history-page</span>
+        </div>
+        <div class="api-desc">Serves the translation history page (same as the History tab in the sidebar).</div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

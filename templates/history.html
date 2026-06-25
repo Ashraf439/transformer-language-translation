@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History — TransFormer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f9fafb; color: #111827; min-height: 100vh; padding: 2rem 1rem; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .top { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; }
+    .back { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: #6b7280; text-decoration: none; padding: 6px 12px; border: 1px solid #e5e7eb; border-radius: 7px; background: white; }
+    .back:hover { background: #f3f4f6; }
+    h1 { font-size: 20px; font-weight: 600; }
+    .sub { font-size: 13px; color: #6b7280; margin-top: 3px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; font-size: 14px; }
+    th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; padding: 10px 16px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
+    td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+    td:last-child { font-size: 12px; color: #9ca3af; font-family: monospace; white-space: nowrap; }
+    .conf-pill { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+    .high { background: #dcfce7; color: #15803d; }
+    .mid  { background: #fef3c7; color: #92400e; }
+    .low  { background: #fee2e2; color: #b91c1c; }
+    .empty { text-align: center; padding: 60px; color: #9ca3af; }
+    .empty i { font-size: 40px; display: block; margin-bottom: 12px; opacity: 0.4; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a href="/" class="back"><i class="ti ti-arrow-left"></i> Back</a>
+    <div>
+      <h1>Translation History</h1>
+      <div class="sub">Last 20 translations</div>
+    </div>
+  </div>
+  <div id="content">
+    <div class="empty"><i class="ti ti-loader"></i>Loading…</div>
+  </div>
+</div>
+<script>
+window.onload = async function() {
+  const container = document.getElementById("content");
+  try {
+    const res  = await fetch("/history");
+    const data = await res.json();
+    if (!data.history || data.history.length === 0) {
+      container.innerHTML = '<div class="empty"><i class="ti ti-history"></i>No translations yet.</div>';
+      return;
+    }
+    let html = `<table>
+      <thead><tr><th>English</th><th>French</th><th>Confidence</th><th>Timestamp</th></tr></thead>
+      <tbody>`;
+    data.history.forEach(r => {
+      const cls = r.confidence >= 80 ? "high" : r.confidence >= 50 ? "mid" : "low";
+      html += `<tr>
+        <td>${r.english}</td>
+        <td>${r.french}</td>
+        <td><span class="conf-pill ${cls}">${r.confidence}%</span></td>
+        <td>${r.timestamp}</td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div class="empty" style="color:#ef4444">Failed to load history.</div>';
+  }
+};
+</script>
+</body>
+</html>
